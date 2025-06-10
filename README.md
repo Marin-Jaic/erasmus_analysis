@@ -38,6 +38,4 @@ python main.py --input data/erasmus_2023.csv
                         'crp', 'glucose', 'wbc', 'comorb_cancer', 'comorb_liver', 'comorb_chf', 'comorb_renal',
         'comorb_diabetes', 'comorb_copd', '30_day_mort', 'treatment', 'source']
 
-## 📜 License
-MIT License - See LICENSE file
 ```
