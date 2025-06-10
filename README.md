@@ -5,8 +5,8 @@
 
 ### Option 1: Using Conda (Recommended)
 ```bash
-conda create -n erasmus_env 
-conda activate erasmus_env
+conda create -n <env_name>
+conda activate <env_name>
 conda install --file requirements.txt
 ```
 
