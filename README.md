@@ -31,10 +31,3 @@ python main.py --input data/erasmus_2023.csv
 ## Output
 • `erasmus_analysis.pkl` - Analysis results file
 
-
-• CSV requirements:
-  - UTF-8 encoding
-  - Required columns: ['sex', 'age', 'rr', 'dbp', 'sbp', 'temp', 'hr', 'spo2', 'creat', 'sodium', 'urea',
-                        'crp', 'glucose', 'wbc', 'comorb_cancer', 'comorb_liver', 'comorb_chf', 'comorb_renal',
-        'comorb_diabetes', 'comorb_copd', '30_day_mort', 'treatment', 'source']
-
