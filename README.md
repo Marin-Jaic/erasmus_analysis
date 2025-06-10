@@ -22,10 +22,6 @@ pip install -r requirements.txt
 ```bash
 python main.py --input <path_to_data.csv>
 ```
-Example:
-```bash
-python main.py --input data/erasmus_2023.csv
-```
 
 ## Output
 • `erasmus_analysis.pkl` - Analysis results file
