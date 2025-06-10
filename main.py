@@ -1,4 +1,4 @@
-from utils import main, load_data, dummy_data
+from src.utils import main, load_data, dummy_data
 import argparse
 import pickle
 
