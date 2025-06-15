@@ -5,9 +5,8 @@
 
 ### Option 1: Using Conda (Recommended)
 ```bash
-# Create and activate a new conda environment
-conda create -n erasmus_env 
-conda activate erasmus_env
+conda create -n <env_name>
+conda activate <env_name>
 conda install --file requirements.txt
 ```
 
@@ -22,10 +21,6 @@ pip install -r requirements.txt
 ## Usage
 ```bash
 python main.py --input <path_to_data.csv>
-```
-Example:
-```bash
-python main.py --input data/erasmus_2023.csv
 ```
 
 ## Output
