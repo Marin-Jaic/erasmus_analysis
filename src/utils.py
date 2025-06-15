@@ -216,73 +216,6 @@ def dummy_data(n = 1000,
     
     return df
 
-# def impute_missing(data):
-#     a = list(set(data.columns) & set(numeric_cols)) 
-#     b = list(set(data.columns) & set(categorical_cols)) 
-
-    
-#     all_features = a + b
-#     sources = data['source'].unique()
-
-#     for col in a + b:
-#         if col in ['source', 'mortality_30_day', 'treatment']:
-#             continue 
-        
-#         is_binary = col in b
-#         predictors = [c for c in all_features if c != col and c != 'mortality_30_day']  # exclude target and label
-        
-#         for src in sources:
-#             mask_src = data['source'] == src
-#             col_src = data.loc[mask_src, col]
-            
-#             # Skip if no missing
-#             if not col_src.isnull().any():
-#                 continue
-
-#             # === Determine training data ===
-#             if col_src.isnull().all():
-#                 print(col)
-#                 # Case 1: fully missing for this source
-#                 train_data = data[(data['source'] != src) & data[col].notnull()]
-#             else:
-#                 # Case 2: partially missing for this source
-#                 train_data = data[(data['source'] == src) & data[col].notnull()]
-            
-#             if train_data.empty:
-#                 continue  
-
-#             # Prepare predictors and target
-#             X_train = train_data[predictors]
-#             y_train = train_data[col]
-            
-#             # Prepare imputer for features
-#             imp = SimpleImputer(strategy="mean")
-#             X_train_imp = imp.fit_transform(X_train)
-
-#             # Select and train model
-#             if is_binary:
-#                 model = RandomForestClassifier(n_estimators=100, random_state=42)
-#             else:
-#                 model = RandomForestRegressor(n_estimators=100, random_state=42)
-#             try:
-#                 #print(predictors)
-#                 model.fit(X_train_imp, y_train)
-#             except ValueError:
-#                 print(predictors)
-#                 print(f"Column: {col}, Predictors: {predictors}")
-#                 sys.exit(1)
-#             # Predict missing values
-#             mask_missing = mask_src & data[col].isnull()
-#             X_pred = data.loc[mask_missing, predictors]
-            
-#             X_pred_imp = imp.transform(X_pred)
-#             preds = model.predict(X_pred_imp)
-
-#             # Assign predictions
-#             data.loc[mask_missing, col] = preds
-    
-#     return data
-
 def impute_missing(data):
     a = list(set(data.columns) & set(numeric_cols)) 
     b = list(set(data.columns) & set(categorical_cols)) 
@@ -290,7 +223,6 @@ def impute_missing(data):
     sources = data['source'].unique()
 
     def train_and_impute(train_data, pred_data, col, predictors, is_binary):
-        # Impute predictors
         imp = SimpleImputer(strategy="mean")
         X_train_imp = imp.fit_transform(train_data[predictors])
         X_pred_imp = imp.transform(pred_data[predictors])
@@ -306,7 +238,6 @@ def impute_missing(data):
         preds = model.predict(X_pred_imp)
         return preds
 
-    # === Phase 1: Fully missing in any source ===
     for col in all_features:
         if col in ['source', 'mortality_30_day', 'treatment']:
             continue
@@ -323,7 +254,6 @@ def impute_missing(data):
                 preds = train_and_impute(train_data, pred_data, col, predictors, is_binary)
                 data.loc[mask_src, col] = preds
 
-    # === Phase 2: Partially missing in source ===
     for col in all_features:
         if col in ['source', 'mortality_30_day', 'treatment']:
             continue
@@ -336,7 +266,7 @@ def impute_missing(data):
             mask_present = mask_src & data[col].notnull()
 
             if not mask_missing.any() or not mask_present.any():
-                continue  # skip if nothing to impute or nothing to train on
+                continue 
 
             train_data = data[mask_present]
             pred_data = data[mask_missing]

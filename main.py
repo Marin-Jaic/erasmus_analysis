@@ -1,7 +1,7 @@
-from src.utils import main, load_data, process_data
+from src.utils import main, load_data, process_data, dummy_data
 import argparse
 import pickle
-
+import numpy as np
 parser = argparse.ArgumentParser(
     description = "Real data experiment"
 )
@@ -13,28 +13,46 @@ path = args.input
 
 data = load_data(path)
 
+data_drop_row = process_data(data, "brutalize_drop")
+
+alpha_drop_row = 0.05
+results_drop_row = main(data_drop_row,
+                        alpha_drop_row)
+
+p_val_drop_row = results_drop_row['p_val']
+clustering_drop_row = results_drop_row['clustering']
+
+print(f'''
+    Data processed by dropping missing columns from the analysis and dropping rows with missing values.
+    Transportability check p-value: {p_val_drop_row}
+    Obtained clusters: {clustering_drop_row}
+      ''')
+
+with open('erasmus_analysis_brutalize_drop.pkl', 'wb') as f:
+    pickle.dump(results_drop_row, f)
+
 data_drop_col= process_data(data, "brutalize_impute")
 
 alpha_drop_col = 0.05
-results_drop_col = main(data,
+results_drop_col = main(data_drop_col,
                         alpha_drop_col)
 
 p_val_drop_col = results_drop_col['p_val']
 clustering_drop_col = results_drop_col['clustering']
 
 print(f'''
-    Data processed by dropping missing columns from the analysis.
+    Data processed by dropping missing columns from the analysis and imputing the missing values.
     Transportability check p-value: {p_val_drop_col}
     Obtained clusters: {clustering_drop_col}
       ''')
 
-with open('erasmus_analysis_drop_col.pkl', 'wb') as f:
+with open('erasmus_analysis_brutalize_impute.pkl', 'wb') as f:
     pickle.dump(results_drop_col, f)
     
 data_imputed_col = process_data(data, "impute")
 
 alpha_imputed_col = 0.05
-results_imputed_col = main(data,
+results_imputed_col = main(data_imputed_col,
                         alpha_imputed_col)
 
 p_val_imputed_col = results_imputed_col['p_val']
