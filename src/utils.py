@@ -1,9 +1,29 @@
 import pandas as pd
 import numpy as np
+import sys
+
+from typing import Literal
+
+from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.stats import chi2
+
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.cluster.hierarchy import linkage, fcluster
+
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.impute import SimpleImputer
+
+#TREATMENT NOT LISTED AS BINARY BECAUSE IT IS USED AS A NUMERIC VALUE IN THE MODEL
+numeric_cols = [
+        'age', 'rr', 'dbp', 'sbp', 'temp', 'hr', 'spo2',
+        'creat', 'sodium', 'urea', 'crp', 'glucose', 'wbc', 'treatment'
+    ]
+
+categorical_cols = [
+        'sex', 'comorb_cancer', 'comorb_liver', 'comorb_chf',
+        'comorb_renal', 'comorb_diabetes', 'comorb_copd',
+        'mortality_30_day', 'source'
+    ]
 
 def get_vectors(params, num_vectors):
     temp = params.to_numpy()
@@ -18,13 +38,25 @@ def get_linear_gammas(params, num_vectors):
 
 def load_data(path):
     data = pd.read_csv(path)
-    data = data.dropna()
 
+    return data
+
+def process_data(data,
+                missing_values: Literal['impute', 'brutalize_drop', 'brutalize_impute', 'drop'] = "drop"):
     data.rename(columns={'30_day_mort': 'mortality_30_day'}, inplace=True)
 
-    data["source"] = data["source"].astype("category")
-    data["sex"]= data["sex"].astype("category")
+    
+    data[categorical_cols] = data[categorical_cols].astype("category")
 
+    if missing_values == "impute":
+        data = impute_missing(data)
+    elif missing_values == "brutalize_drop":
+        data = brutalize(data, impute = False)
+    elif missing_values == "brutalize_impute":
+        data = brutalize(data, impute = True)
+    else:
+        data = data.dropna()
+    
     return data
 
 def LRT(pooled_model, nested_model):
@@ -36,7 +68,6 @@ def LRT(pooled_model, nested_model):
     df_diff = nested_model.df_model - pooled_model.df_model
 
     return chi2.sf(LR_stat, df_diff)
-
 
 def generate_nested_model(data):
     columns = data.columns
@@ -159,12 +190,12 @@ def dummy_data(n = 1000,
         'crp': np.random.normal(10, 5, n),
         'glucose': np.random.normal(100, 20, n),
         'wbc': np.random.normal(7, 2, n),
-        'comorb_cancer': np.random.normal(0.2, 0.4, n),
-        'comorb_liver': np.random.normal(0.1, 0.3, n),
-        'comorb_chf': np.random.normal(0.3, 0.4, n),
-        'comorb_renal': np.random.normal(0.25, 0.35, n),
-        'comorb_diabetes': np.random.normal(0.4, 0.45, n),
-        'comorb_copd': np.random.normal(0.2, 0.4, n),
+        'comorb_cancer': np.random.binomial(1, 0.5, n),
+        'comorb_liver': np.random.binomial(1, 0.5, n),
+        'comorb_chf': np.random.binomial(1, 0.5, n),
+        'comorb_renal': np.random.binomial(1, 0.5, n),
+        'comorb_diabetes': np.random.binomial(1, 0.5, n),
+        'comorb_copd': np.random.binomial(1, 0.5, n),
         '30_day_mort': np.random.binomial(1, 0.15, n),
         'treatment': np.random.binomial(1, 0.5, n),
         'source': np.random.choice([0, 1, 6, 9], size=n)
@@ -174,10 +205,216 @@ def dummy_data(n = 1000,
 
     missing_rate = 0.05
     for col in df.columns:
+        if col in ['source', 'mortality_30_day', 'treatment']:
+            continue 
+
         missing_indices = np.random.choice(df.index, size=int(n * missing_rate), replace=False)
         df.loc[missing_indices, col] = np.nan
 
     if path is not None:
         df.to_csv(path, index=False)  
     
+    return df
+
+# def impute_missing(data):
+#     a = list(set(data.columns) & set(numeric_cols)) 
+#     b = list(set(data.columns) & set(categorical_cols)) 
+
+    
+#     all_features = a + b
+#     sources = data['source'].unique()
+
+#     for col in a + b:
+#         if col in ['source', 'mortality_30_day', 'treatment']:
+#             continue 
+        
+#         is_binary = col in b
+#         predictors = [c for c in all_features if c != col and c != 'mortality_30_day']  # exclude target and label
+        
+#         for src in sources:
+#             mask_src = data['source'] == src
+#             col_src = data.loc[mask_src, col]
+            
+#             # Skip if no missing
+#             if not col_src.isnull().any():
+#                 continue
+
+#             # === Determine training data ===
+#             if col_src.isnull().all():
+#                 print(col)
+#                 # Case 1: fully missing for this source
+#                 train_data = data[(data['source'] != src) & data[col].notnull()]
+#             else:
+#                 # Case 2: partially missing for this source
+#                 train_data = data[(data['source'] == src) & data[col].notnull()]
+            
+#             if train_data.empty:
+#                 continue  
+
+#             # Prepare predictors and target
+#             X_train = train_data[predictors]
+#             y_train = train_data[col]
+            
+#             # Prepare imputer for features
+#             imp = SimpleImputer(strategy="mean")
+#             X_train_imp = imp.fit_transform(X_train)
+
+#             # Select and train model
+#             if is_binary:
+#                 model = RandomForestClassifier(n_estimators=100, random_state=42)
+#             else:
+#                 model = RandomForestRegressor(n_estimators=100, random_state=42)
+#             try:
+#                 #print(predictors)
+#                 model.fit(X_train_imp, y_train)
+#             except ValueError:
+#                 print(predictors)
+#                 print(f"Column: {col}, Predictors: {predictors}")
+#                 sys.exit(1)
+#             # Predict missing values
+#             mask_missing = mask_src & data[col].isnull()
+#             X_pred = data.loc[mask_missing, predictors]
+            
+#             X_pred_imp = imp.transform(X_pred)
+#             preds = model.predict(X_pred_imp)
+
+#             # Assign predictions
+#             data.loc[mask_missing, col] = preds
+    
+#     return data
+
+def impute_missing(data):
+    a = list(set(data.columns) & set(numeric_cols)) 
+    b = list(set(data.columns) & set(categorical_cols)) 
+    all_features = a + b
+    sources = data['source'].unique()
+
+    def train_and_impute(train_data, pred_data, col, predictors, is_binary):
+        # Impute predictors
+        imp = SimpleImputer(strategy="mean")
+        X_train_imp = imp.fit_transform(train_data[predictors])
+        X_pred_imp = imp.transform(pred_data[predictors])
+
+        y_train = train_data[col]
+        if is_binary:
+            y_train = y_train.round().astype(int)
+            model = RandomForestClassifier(n_estimators=100, random_state=42)
+        else:
+            model = RandomForestRegressor(n_estimators=100, random_state=42)
+
+        model.fit(X_train_imp, y_train)
+        preds = model.predict(X_pred_imp)
+        return preds
+
+    # === Phase 1: Fully missing in any source ===
+    for col in all_features:
+        if col in ['source', 'mortality_30_day', 'treatment']:
+            continue
+        is_binary = col in b
+        predictors = [c for c in all_features if c != col and c != 'mortality_30_day']
+
+        for src in sources:
+            mask_src = data['source'] == src
+            if data.loc[mask_src, col].isnull().all():
+                train_data = data[(data['source'] != src) & data[col].notnull()]
+                if train_data.empty:
+                    continue
+                pred_data = data[mask_src]
+                preds = train_and_impute(train_data, pred_data, col, predictors, is_binary)
+                data.loc[mask_src, col] = preds
+
+    # === Phase 2: Partially missing in source ===
+    for col in all_features:
+        if col in ['source', 'mortality_30_day', 'treatment']:
+            continue
+        is_binary = col in b
+        predictors = [c for c in all_features if c != col and c != 'mortality_30_day']
+
+        for src in sources:
+            mask_src = data['source'] == src
+            mask_missing = mask_src & data[col].isnull()
+            mask_present = mask_src & data[col].notnull()
+
+            if not mask_missing.any() or not mask_present.any():
+                continue  # skip if nothing to impute or nothing to train on
+
+            train_data = data[mask_present]
+            pred_data = data[mask_missing]
+            preds = train_and_impute(train_data, pred_data, col, predictors, is_binary)
+            data.loc[mask_missing, col] = preds
+
+    return data
+
+
+def brutalize(df, impute = False):
+    numeric_cols = [
+        'age', 'rr', 'dbp', 'sbp', 'temp', 'hr', 'spo2',
+        'creat', 'sodium', 'urea', 'crp', 'glucose', 'wbc', 'treatment'
+    ]
+
+    categorical_cols = [
+            'sex', 'comorb_cancer', 'comorb_liver', 'comorb_chf',
+            'comorb_renal', 'comorb_diabetes', 'comorb_copd',
+            'mortality_30_day', 'source'
+        ]
+
+    df = df.copy() 
+
+    source_col = "source"
+    drop_cols = []
+
+    for col in numeric_cols + categorical_cols:
+        if col == 'source' or col == "treatment":
+            continue
+        for src in df[source_col].unique():
+            if df.loc[df[source_col] == src, col].isnull().all():
+                drop_cols.append(col)
+                break  
+
+    if drop_cols:
+        print(f"Dropping columns missing entirely in one or more sources: {drop_cols}")
+        df = df.drop(columns=drop_cols)
+        numeric_cols = [col for col in numeric_cols if col not in drop_cols]
+        categorical_cols = [col for col in categorical_cols if col not in drop_cols]
+
+    if not impute:
+        df = df.dropna()
+        return df
+    
+    all_cols = numeric_cols + categorical_cols
+    predictors_all = [col for col in all_cols if col != source_col]
+
+    for src in df[source_col].unique():
+        df_src = df[df[source_col] == src]
+        for col in all_cols:
+            if col == source_col:
+                continue
+            if df_src[col].isnull().sum() == 0:
+                continue  # no missing values
+
+            predictors = [p for p in predictors_all if p != col and p in df.columns]
+
+            train_df = df_src[df_src[col].notnull()]
+            test_df = df_src[df_src[col].isnull()]
+
+            if train_df.empty or test_df.empty:
+                continue
+
+            
+            imp = SimpleImputer(strategy="mean")
+            X_train = imp.fit_transform(train_df[predictors])
+            X_test = imp.transform(test_df[predictors])
+            y_train = train_df[col]
+
+            if col in categorical_cols:
+                y_train = y_train.astype(int)
+                model = RandomForestClassifier(n_estimators=100, random_state=42)
+            else:
+                model = RandomForestRegressor(n_estimators=100, random_state=42)
+            
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+
+            df.loc[df[source_col] == src, col] = df.loc[df[source_col] == src, col].fillna(pd.Series(y_pred, index=test_df.index))
+
     return df
