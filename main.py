@@ -41,7 +41,7 @@ p_val_imputed_col = results_imputed_col['p_val']
 clustering_imputed_col = results_imputed_col['clustering']
 
 print(f'''
-    Data processed by dropping missing columns from the analysis.
+    Data processed by imputing the missing columns.
     Transportability check p-value: {p_val_imputed_col}
     Obtained clusters: {clustering_imputed_col}
       ''')
