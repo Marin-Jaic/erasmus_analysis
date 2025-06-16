@@ -1,7 +1,7 @@
-from src.utils import main, load_data, process_data, dummy_data
+from src.utils import main, load_data, process_data
 import argparse
 import pickle
-import numpy as np
+
 parser = argparse.ArgumentParser(
     description = "Real data experiment"
 )
