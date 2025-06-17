@@ -45,7 +45,12 @@ def process_data(data,
                 missing_values: Literal['impute', 'brutalize_drop', 'brutalize_impute', 'drop'] = "drop"):
     data.rename(columns={'30_day_mort': 'mortality_30_day'}, inplace=True)
 
-    
+    trials = np.unique(data["source"])
+    new_labels = [i for i in range(len(trials))]
+
+    for trial, label in zip(trials, new_labels):
+        data.loc[data["source"] == trial, "source"] = label
+
     data[categorical_cols] = data[categorical_cols].astype("category")
 
     if missing_values == "impute":
@@ -107,7 +112,7 @@ def recursive_cluster(data,
     
     nested_model = generate_nested_model(data)
     pooled_model = generate_pooled_model(data)
-
+    
     p_val = LRT(pooled_model, nested_model)
     
     if p_val > alpha:
@@ -133,8 +138,8 @@ def recursive_cluster(data,
 
         for i in np.unique(clusters):
             trials = [trial for trial, cluster in enumerate(clusters) if cluster == i]
-            curr_data = data[data['source'].isin(trials)].copy()
             
+            curr_data = data[data['source'].isin(trials)].copy()
             value_map = {val: idx for idx, val in enumerate(trials)}
             curr_data['source'] = curr_data['source'].map(value_map)
             
@@ -158,7 +163,7 @@ def main(data,
 
     nested_model = generate_nested_model(data)
     pooled_model = generate_pooled_model(data)
-
+    
     p_val = LRT(pooled_model, nested_model)
 
     results = {}
@@ -199,6 +204,7 @@ def dummy_data(n = 1000,
         '30_day_mort': np.random.binomial(1, 0.15, n),
         'treatment': np.random.binomial(1, 0.5, n),
         'source': np.random.choice([0, 1, 6, 9], size=n)
+        #'source': np.random.choice([0, 1, 3], size=n)
     }
 
     df = pd.DataFrame(data)
