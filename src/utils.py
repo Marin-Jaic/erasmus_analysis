@@ -70,7 +70,6 @@ def LRT(pooled_model, nested_model):
     LL_nested = nested_model.llf
 
     LR_stat = 2 * (LL_nested - LL_pooled)
-
     df_diff = nested_model.df_model - pooled_model.df_model
 
     return chi2.sf(LR_stat, df_diff)
@@ -95,7 +94,7 @@ def generate_pooled_model(data):
     treatment = columns[-2]
     outcome = columns[-3]
 
-    model = smf.glm(formula = f"{outcome} ~ {features} * {treatment}",
+    model = smf.glm(formula = f"{outcome} ~ ({features}) * {treatment}",
                     data = data,
                     family=sm.families.Binomial()
                     ).fit()
