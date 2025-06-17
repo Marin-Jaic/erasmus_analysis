@@ -62,6 +62,7 @@ def process_data(data,
     else:
         data = data.dropna()
     
+    data = drop_constant_cols(data)
     return data
 
 def LRT(pooled_model, nested_model):
@@ -158,15 +159,34 @@ def recursive_cluster(data,
 def main(data,
          alpha = 0.05):
     
+    results = {}
+
     num_features = len(data.columns) - 3
     num_trials = data["source"].nunique()
+
+    results["data_per_source"] = data["source"].value_counts().to_dict()
 
     nested_model = generate_nested_model(data)
     pooled_model = generate_pooled_model(data)
     
-    p_val = LRT(pooled_model, nested_model)
+    temp = {}
+    for src in data["source"].unique():
+        subset = data[data["source"] == src]
+        constant_cols = [col for col in data.columns if subset[col].nunique(dropna=False) <= 1 and col != "source" and col != "treatment" and col != "mortality_30_day"]
+        temp[src] = constant_cols
 
-    results = {}
+    results["constant_cols"] = temp
+
+    results["nested_llf"] = nested_model.llf
+    results["pooled_llf"] = pooled_model.llf
+
+    results["nested_df"] = nested_model.df_model
+    results["pooled_df"] = pooled_model.df_model
+
+    # results["nested_convergence"] = nested_model.mle_retvals
+    # results["pooled_convergence"] = pooled_model.mle_retvals
+
+    p_val = LRT(pooled_model, nested_model)
 
     results["p_val"] = p_val
     results["clustering"] = recursive_cluster(data = data,
@@ -175,6 +195,19 @@ def main(data,
                              alpha = alpha)
     
     return results
+
+def drop_constant_cols(data):
+    constant_cols = set()
+
+    for src in data["source"].unique():
+        subset = data[data["source"] == src]
+        cols = [col for col in data.columns 
+                if col != "source" and subset[col].nunique(dropna=False) <= 1]
+        constant_cols.update(cols)
+
+    if len(constant_cols) > 0:
+        print(f"Dropping constant columns: {constant_cols}")
+    return data.drop(columns=constant_cols)
 
 def dummy_data(n = 1000, 
                seed = 42, 
