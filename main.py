@@ -13,6 +13,22 @@ path = args.input
 
 data = load_data(path)
 
+data_simple = process_data(data, "drop")
+
+alpha_simple = 0.05
+results_simple = main(data_simple,
+                        alpha_simple)
+
+p_val_simple = results_simple['p_val']
+clustering_simple = results_simple['clustering']
+
+print(f'''Data processed by dropping missing values.
+Transportability check p-value: {p_val_simple}
+Obtained clusters: {clustering_simple}''')
+
+with open('erasmus_analysis_simple.pkl', 'wb') as f:
+    pickle.dump(results_simple, f)
+
 data_drop_row = process_data(data, "brutalize_drop")
 
 alpha_drop_row = 0.05

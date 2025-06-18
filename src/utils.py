@@ -55,10 +55,13 @@ def process_data(data,
 
     if missing_values == "impute":
         data = impute_missing(data)
+        data = drop_perfect_separators(data)
     elif missing_values == "brutalize_drop":
         data = brutalize(data, impute = False)
+        data = drop_perfect_separators(data)
     elif missing_values == "brutalize_impute":
         data = brutalize(data, impute = True)
+        data = drop_perfect_separators(data)
     else:
         data = data.dropna()
     
@@ -74,30 +77,44 @@ def LRT(pooled_model, nested_model):
 
     return chi2.sf(LR_stat, df_diff)
 
-def generate_nested_model(data):
+def generate_nested_model(data, regularized = False):
     columns = data.columns
     features = " + ".join(columns[:-3])
     source = columns[-1]
     treatment = columns[-2]
     outcome = columns[-3]
 
-    model = smf.glm(formula = f"{outcome} ~ C({source}) + C({source}):(({features}) * {treatment})",
-                    data = data,
-                    family=sm.families.Binomial()
-                    ).fit()
+    model = None
+    if not regularized:
+        model = smf.glm(formula = f"{outcome} ~ C({source}) + C({source}):(({features}) * {treatment})",
+                        data = data,
+                        family=sm.families.Binomial()
+                        ).fit()
+    else:
+        model = smf.glm(formula = f"{outcome} ~ C({source}) + C({source}):(({features}) * {treatment})",
+                        data = data,
+                        family=sm.families.Binomial()
+                        ).fit_regularized(alpha = 0.1, L1_wt = 1)
     
     return model
 
-def generate_pooled_model(data):
+def generate_pooled_model(data, regularized = False):
     columns = data.columns
     features = " + ".join(columns[:-3])
     treatment = columns[-2]
     outcome = columns[-3]
 
-    model = smf.glm(formula = f"{outcome} ~ ({features}) * {treatment}",
-                    data = data,
-                    family=sm.families.Binomial()
-                    ).fit()
+    model = None
+    if not regularized:
+        model = smf.glm(formula = f"{outcome} ~ ({features}) * {treatment}",
+                        data = data,
+                        family=sm.families.Binomial()
+                        ).fit()
+    else:
+        model = smf.glm(formula = f"{outcome} ~ ({features}) * {treatment}",
+                        data = data,
+                        family=sm.families.Binomial()
+                        ).fit(alpha = 0.1, L1_wt = 1)
     
     return model
 
@@ -163,6 +180,7 @@ def main(data,
     num_features = len(data.columns) - 3
     num_trials = data["source"].nunique()
 
+    results["remaining_columns"] = data.columns
     results["data_per_source"] = data["source"].value_counts().to_dict()
 
     nested_model = generate_nested_model(data)
@@ -208,6 +226,31 @@ def drop_constant_cols(data):
         print(f"Dropping constant columns: {constant_cols}")
     return data.drop(columns=constant_cols)
 
+def drop_perfect_separators(df, outcome_col="mortality_30_day", source_col="source"):
+    df = df.copy()
+    features = [col for col in df.columns if col not in [source_col, outcome_col]]
+    separators = set()
+
+    for src in df[source_col].unique():
+        group = df[df[source_col] == src]
+        
+        for col in features:
+            if col == "treatment":
+                continue
+
+            temp = group[[col, outcome_col]].dropna()
+
+            if temp.empty:
+                continue
+
+            ctab = pd.crosstab(temp[col], temp[outcome_col])
+
+            if (ctab == 0).any(axis=1).any():
+                separators.add(col)
+
+    print(f"Columns dropped due to perfect separation: {sorted(separators)}")
+    return df.drop(columns=separators)
+
 def dummy_data(n = 1000, 
                seed = 42, 
                path = None):
@@ -235,7 +278,7 @@ def dummy_data(n = 1000,
         'comorb_copd': np.random.binomial(1, 0.5, n),
         '30_day_mort': np.random.binomial(1, 0.15, n),
         'treatment': np.random.binomial(1, 0.5, n),
-        'source': np.random.choice([0, 1, 6, 9], size=n)
+        'source': np.random.choice([0, 1, 2, 3], size=n)
         #'source': np.random.choice([0, 1, 3], size=n)
     }
 
