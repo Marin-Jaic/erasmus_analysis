@@ -39,6 +39,9 @@ def get_linear_gammas(params, num_vectors):
 def load_data(path):
     data = pd.read_csv(path)
 
+    if 'Unnamed: 0' in data.columns:
+        data = data.drop(columns='Unnamed: 0')
+
     return data
 
 def process_data(data,

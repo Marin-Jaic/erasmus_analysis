@@ -1,6 +1,7 @@
 from src.utils import main, load_data, process_data
 import argparse
 import pickle
+import traceback
 
 parser = argparse.ArgumentParser(
     description = "Real data experiment"
@@ -27,10 +28,18 @@ for approach in data_preprocess:
         try:
             results = main(processed_data,
                         alpha)
-        except Exception as e:
+        except ValueError as e:
             print(f"Dropping source {source}")
             approach_data = approach_data[approach_data["source"] != source]
             continue
+        except Exception as e:
+            results = {}
+            results["type"] = str(e)
+            results["text"] = traceback.format_exc()
+
+            with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
+                pickle.dump(results, f)
+            break
 
         p_val = results['p_val']
         clustering = results['clustering']
