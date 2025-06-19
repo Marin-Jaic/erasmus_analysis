@@ -12,7 +12,8 @@ data.loc[785+794:785+794+401, "source"] = 2
 data.loc[785+794+401:785+794+401+304, "source"] = 3
 data.loc[785+794+401+304:785+794+401+304+213, "source"] = 4
 data.loc[785+794+401+304+213:785+794+401+304+213+120, "source"] = 5
-data = process_data(data, "brutalize_impute")
+data.to_csv("gas.csv", index=False) 
+data = process_data(data, "brutalize_drop")
 
 alpha = 0.05
 results = main(data,

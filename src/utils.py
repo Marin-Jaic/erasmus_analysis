@@ -55,13 +55,13 @@ def process_data(data,
 
     if missing_values == "impute":
         data = impute_missing(data)
-        data = drop_perfect_separators(data)
+        #data = drop_perfect_separators(data)
     elif missing_values == "brutalize_drop":
         data = brutalize(data, impute = False)
-        data = drop_perfect_separators(data)
+        #data = drop_perfect_separators(data)
     elif missing_values == "brutalize_impute":
         data = brutalize(data, impute = True)
-        data = drop_perfect_separators(data)
+        #data = drop_perfect_separators(data)
     else:
         data = data.dropna()
     
@@ -89,7 +89,7 @@ def generate_nested_model(data, regularized = False):
         model = smf.glm(formula = f"{outcome} ~ C({source}) + C({source}):(({features}) * {treatment})",
                         data = data,
                         family=sm.families.Binomial()
-                        ).fit()
+                        ).fit(maxiter = 1000)
     else:
         model = smf.glm(formula = f"{outcome} ~ C({source}) + C({source}):(({features}) * {treatment})",
                         data = data,
@@ -109,7 +109,7 @@ def generate_pooled_model(data, regularized = False):
         model = smf.glm(formula = f"{outcome} ~ ({features}) * {treatment}",
                         data = data,
                         family=sm.families.Binomial()
-                        ).fit()
+                        ).fit(maxiter = 1000)
     else:
         model = smf.glm(formula = f"{outcome} ~ ({features}) * {treatment}",
                         data = data,
@@ -180,11 +180,16 @@ def main(data,
     num_features = len(data.columns) - 3
     num_trials = data["source"].nunique()
 
+    results["sources"] = np.unique(data["source"])
     results["remaining_columns"] = data.columns
     results["data_per_source"] = data["source"].value_counts().to_dict()
 
     nested_model = generate_nested_model(data)
     pooled_model = generate_pooled_model(data)
+    
+    if np.isnan(nested_model.llf):
+        raise ValueError("Log-likelihood is nan")
+        
     
     temp = {}
     for src in data["source"].unique():
