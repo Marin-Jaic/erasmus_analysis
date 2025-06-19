@@ -1,10 +1,6 @@
 from src.utils import main, load_data, process_data
 import argparse
 import pickle
-import warnings
-
-# Suppress all warnings
-warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(
     description = "Real data experiment"
@@ -23,7 +19,7 @@ sorted_sources = data["source"].value_counts(ascending=True).index.tolist()
 for approach in data_preprocess:
     approach_data = data.copy()
     print(f"Running approach {approach}")
-    
+
     for source in sorted_sources:
         processed_data = process_data(approach_data, approach)
 
