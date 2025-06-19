@@ -22,6 +22,7 @@ sorted_sources = data["source"].value_counts(ascending=True).index.tolist()
 
 for approach in data_preprocess:
     approach_data = data.copy()
+    print(f"Running approach {approach}")
     
     for source in sorted_sources:
         processed_data = process_data(approach_data, approach)
@@ -44,5 +45,5 @@ for approach in data_preprocess:
 
         with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
             pickle.dump(results, f)
-        print(results)
+        
         break
