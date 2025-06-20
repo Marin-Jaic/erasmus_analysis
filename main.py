@@ -1,4 +1,5 @@
 from src.utils import main, load_data, process_data
+import numpy as np
 import argparse
 import pickle
 import traceback
@@ -15,16 +16,21 @@ path = args.input
 data_preprocess = ["drop", "brutalize_drop", "brutalize_impute", "impute"]
 
 data = load_data(path)
-sorted_sources = data["source"].value_counts(ascending=True).index.tolist()
+
+sources = list(np.unique(data["source"]))
+
 for approach in data_preprocess:
     approach_data = data.copy()
     results = {}
 
-    results["starting_sizes"] = data["source"].value_counts(ascending=True).to_dict() 
+    results["starting_sizes"] = None
     results["removal_order"] = []
 
-    for source in sorted_sources:
+    while len(results["removal_order"]) != len(sources):
         processed_data = process_data(approach_data, approach)
+
+        if results["starting_sizes"] is None:
+             results["starting_sizes"] = data["source"].value_counts(ascending=True).to_dict() 
 
         alpha = 0.05
         try:
@@ -33,10 +39,14 @@ for approach in data_preprocess:
             results["results"] = clustering_results
 
         except ValueError as e:
-            print(f"Dropping source {source}")
-            approach_data = approach_data[approach_data["source"] != source]
-            results["removal_order"] = results["removal_order"] + [source]
+            source_min = processed_data["source"].value_counts(ascending=True).idxmin()
+            print(f"Dropping source {source_min}")
+            
+            approach_data = approach_data[approach_data["source"] != source_min]
+            results["removal_order"] = results["removal_order"] + [source_min]
+            
             continue
+
         except Exception as e:
             error = {}
             error["type"] = str(e)

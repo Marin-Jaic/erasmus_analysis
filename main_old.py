@@ -1,78 +1,57 @@
 from src.utils import main, load_data, process_data
 import argparse
 import pickle
+import traceback
 
 parser = argparse.ArgumentParser(
     description = "Real data experiment"
 )
 
 parser.add_argument('--input', type=str, help='Path to .csv file')
-args = parser.parse_args()
 
+args = parser.parse_args()
 path = args.input
 
+data_preprocess = ["drop", "brutalize_drop", "brutalize_impute", "impute"]
+
 data = load_data(path)
+sorted_sources = data["source"].value_counts(ascending=True).index.tolist()
+for approach in data_preprocess:
+    approach_data = data.copy()
+    results = {}
 
-data_simple = process_data(data, "drop")
+    results["starting_sizes"] = data["source"].value_counts(ascending=True).to_dict() 
+    results["removal_order"] = []
 
-alpha_simple = 0.05
-results_simple = main(data_simple,
-                        alpha_simple)
+    for source in sorted_sources:
+        processed_data = process_data(approach_data, approach)
 
-p_val_simple = results_simple['p_val']
-clustering_simple = results_simple['clustering']
+        alpha = 0.05
+        try:
+            clustering_results = main(processed_data,
+                        alpha)
+            results["results"] = clustering_results
 
-print(f'''Data processed by dropping missing values.
-Transportability check p-value: {p_val_simple}
-Obtained clusters: {clustering_simple}''')
+        except ValueError as e:
+            print(f"Dropping source {source}")
+            approach_data = approach_data[approach_data["source"] != source]
+            results["removal_order"] = results["removal_order"] + [source]
+            continue
+        except Exception as e:
+            error = {}
+            error["type"] = str(e)
+            error["text"] = traceback.format_exc()
 
-with open('erasmus_analysis_simple.pkl', 'wb') as f:
-    pickle.dump(results_simple, f)
-
-data_drop_row = process_data(data, "brutalize_drop")
-
-alpha_drop_row = 0.05
-results_drop_row = main(data_drop_row,
-                        alpha_drop_row)
-
-p_val_drop_row = results_drop_row['p_val']
-clustering_drop_row = results_drop_row['clustering']
-
-print(f''' Data processed by dropping missing columns from the analysis and dropping rows with missing values.
-Transportability check p-value: {p_val_drop_row}
-Obtained clusters: {clustering_drop_row}''')
-
-with open('erasmus_analysis_brutalize_drop.pkl', 'wb') as f:
-    pickle.dump(results_drop_row, f)
-
-data_drop_col= process_data(data, "brutalize_impute")
-
-alpha_drop_col = 0.05
-results_drop_col = main(data_drop_col,
-                        alpha_drop_col)
-
-p_val_drop_col = results_drop_col['p_val']
-clustering_drop_col = results_drop_col['clustering']
-
-print(f'''Data processed by dropping missing columns from the analysis and imputing the missing values.
-Transportability check p-value: {p_val_drop_col}
-Obtained clusters: {clustering_drop_col}''')
-
-with open('erasmus_analysis_brutalize_impute.pkl', 'wb') as f:
-    pickle.dump(results_drop_col, f)
-    
-data_imputed_col = process_data(data, "impute")
-
-alpha_imputed_col = 0.05
-results_imputed_col = main(data_imputed_col,
-                        alpha_imputed_col)
-
-p_val_imputed_col = results_imputed_col['p_val']
-clustering_imputed_col = results_imputed_col['clustering']
-
-print(f'''Data processed by imputing the missing columns.
-Transportability check p-value: {p_val_imputed_col}
-Obtained clusters: {clustering_imputed_col}''')
-
-with open('erasmus_analysis_imputed_col.pkl', 'wb') as f:
-    pickle.dump(results_imputed_col, f)
+            results["error"] = error
+            with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
+                pickle.dump(results, f)
+                
+            break
+        
+        with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
+            pickle.dump(results, f)
+        
+        break
+        
+    with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
+            pickle.dump(results, f)
