@@ -42,17 +42,17 @@ def load_data(path):
     if 'Unnamed: 0' in data.columns:
         data = data.drop(columns='Unnamed: 0')
 
-    return data
-
-def process_data(data,
-                missing_values: Literal['impute', 'brutalize_drop', 'brutalize_impute', 'drop'] = "drop"):
-    data.rename(columns={'30_day_mort': 'mortality_30_day'}, inplace=True)
-
     trials = np.unique(data["source"])
     new_labels = [i for i in range(len(trials))]
 
     for trial, label in zip(trials, new_labels):
         data.loc[data["source"] == trial, "source"] = label
+
+    return data
+
+def process_data(data,
+                missing_values: Literal['impute', 'brutalize_drop', 'brutalize_impute', 'drop'] = "drop"):
+    data.rename(columns={'30_day_mort': 'mortality_30_day'}, inplace=True)
 
     data[categorical_cols] = data[categorical_cols].astype("category")
 

@@ -21,8 +21,8 @@ for approach in data_preprocess:
     results = {}
 
     results["starting_sizes"] = data["source"].value_counts(ascending=True).to_dict() 
+    results["removal_order"] = []
 
-    print(f"Running approach {approach}")
     for source in sorted_sources:
         processed_data = process_data(approach_data, approach)
 
@@ -35,6 +35,7 @@ for approach in data_preprocess:
         except ValueError as e:
             print(f"Dropping source {source}")
             approach_data = approach_data[approach_data["source"] != source]
+            results["removal_order"] = results["removal_order"] + [source]
             continue
         except Exception as e:
             error = {}
@@ -44,6 +45,7 @@ for approach in data_preprocess:
             results["error"] = error
             with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
                 pickle.dump(results, f)
+                
             break
         
         with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
