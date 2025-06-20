@@ -16,39 +16,40 @@ data_preprocess = ["drop", "brutalize_drop", "brutalize_impute", "impute"]
 
 data = load_data(path)
 sorted_sources = data["source"].value_counts(ascending=True).index.tolist()
-
 for approach in data_preprocess:
     approach_data = data.copy()
-    print(f"Running approach {approach}")
+    results = {}
 
+    results["starting_sizes"] = data["source"].value_counts(ascending=True).to_dict() 
+
+    print(f"Running approach {approach}")
     for source in sorted_sources:
         processed_data = process_data(approach_data, approach)
 
         alpha = 0.05
         try:
-            results = main(processed_data,
+            clustering_results = main(processed_data,
                         alpha)
+            results["results"] = clustering_results
+
         except ValueError as e:
             print(f"Dropping source {source}")
             approach_data = approach_data[approach_data["source"] != source]
             continue
         except Exception as e:
-            results = {}
-            results["type"] = str(e)
-            results["text"] = traceback.format_exc()
+            error = {}
+            error["type"] = str(e)
+            error["text"] = traceback.format_exc()
 
+            results["error"] = error
             with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
                 pickle.dump(results, f)
             break
-
-        p_val = results['p_val']
-        clustering = results['clustering']
-
-        print(f'''Data processed by {approach} method.
-        Transportability check p-value: {p_val}
-        Obtained clusters: {clustering}''')
-
+        
         with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
             pickle.dump(results, f)
         
         break
+        
+    with open(f'erasmus_analysis_{approach}.pkl', 'wb') as f:
+            pickle.dump(results, f)

@@ -319,9 +319,9 @@ def impute_missing(data):
         y_train = train_data[col]
         if is_binary:
             y_train = y_train.round().astype(int)
-            model = RandomForestClassifier(n_estimators=100, random_state=42)
+            model = RandomForestClassifier(n_estimators=100)
         else:
-            model = RandomForestRegressor(n_estimators=100, random_state=42)
+            model = RandomForestRegressor(n_estimators=100)
 
         model.fit(X_train_imp, y_train)
         preds = model.predict(X_pred_imp)
@@ -331,7 +331,7 @@ def impute_missing(data):
         if col in ['source', 'mortality_30_day', 'treatment']:
             continue
         is_binary = col in b
-        predictors = [c for c in all_features if c != col and c != 'mortality_30_day']
+        predictors = [c for c in all_features if c != col and c != "mortality_30_day" and c != "source" and c != "treatment" ]
 
         for src in sources:
             mask_src = data['source'] == src
@@ -347,7 +347,7 @@ def impute_missing(data):
         if col in ['source', 'mortality_30_day', 'treatment']:
             continue
         is_binary = col in b
-        predictors = [c for c in all_features if c != col and c != 'mortality_30_day']
+        predictors = [c for c in all_features if c != col and c != 'mortality_30_day' and c != "treatment" and c != "source"]
 
         for src in sources:
             mask_src = data['source'] == src
@@ -401,12 +401,12 @@ def brutalize(df, impute = False):
         return df
     
     all_cols = numeric_cols + categorical_cols
-    predictors_all = [col for col in all_cols if col != source_col]
+    predictors_all = [col for col in all_cols if col != source_col and col != "treatment" and col != "mort_30_day"]
 
     for src in df[source_col].unique():
         df_src = df[df[source_col] == src]
         for col in all_cols:
-            if col == source_col:
+            if col == source_col or col == "treatment" or col == "mortality_30_day":
                 continue
             if df_src[col].isnull().sum() == 0:
                 continue  # no missing values
@@ -427,9 +427,9 @@ def brutalize(df, impute = False):
 
             if col in categorical_cols:
                 y_train = y_train.astype(int)
-                model = RandomForestClassifier(n_estimators=100, random_state=42)
+                model = RandomForestClassifier(n_estimators=100)
             else:
-                model = RandomForestRegressor(n_estimators=100, random_state=42)
+                model = RandomForestRegressor(n_estimators=100)
             
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
